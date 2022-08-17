@@ -3,7 +3,7 @@ import numpy as np
 import xarray as xr
 import geopandas as gpd
 
-def get_closer_to_center(arr):
+def get_closer_to_center(arr, **kwargs):
     """Iteratively check for valid elements of an array starting from the center
     The sequence of indices tried are (e.g. center is 6):
     6, then 7, then 5, then 8, then 4, etc...
@@ -52,8 +52,10 @@ def prepare_data(ds, variables, resample_to='5Min', fill_up_to=15, aggregate_met
         time frequency string to use for the time resampling, by default '5Min'
     fill_up_to : int, optional
         maximum gap in time to fill using spatial interpolation (only applied to latitude and longitude columns), by default 15
-    aggregate_method : str or dict, optional
+    aggregate_method : str, callable or dict, optional
         method to aggregate variables, by default 'mean'
+        if str or callable, it will be used to aggregate every variable
+        if dict, this will be a mapping of {variable:method}
 
     Returns
     -------
@@ -83,7 +85,8 @@ def prepare_data(ds, variables, resample_to='5Min', fill_up_to=15, aggregate_met
     agg_dict['time'] = get_closer_to_center
     
     ds = ds.resample(resample_to).agg(
-        agg_dict
+        agg_dict,
+        skipna=True
     )
     
     gdf = gpd.GeoDataFrame(data=ds, geometry=gpd.points_from_xy(ds.longitude, ds.latitude), crs='4326')
