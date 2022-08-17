@@ -50,5 +50,5 @@ As an initial exercise, Maya and Felipe explored some Saildrone data (hydrograph
     - Maya: reviewed and improved Sophie's code to calculate and classify gradients on time series (1D data)
     - Alessio: developed a preprocessing routine for saildrone data. This performs a spatial interpolation for missing lat/lon, then resample to 5 minutes and finally convert to spatial dataset (geodataframe)
         - see saildrone_processing.py, and view_data_AA.ipynb
-    - Felipe: processed SSH data to calculate gradient and threshold. Compare and merge saildrone measurement with SSH in space and time
+    - Felipe: processed SSH data to calculate gradient and threshold. Also, compared and merged saildrone measurement with SSH in space and time
         - see gradient_peaks.ipynb
