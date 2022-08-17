@@ -1,8 +1,14 @@
-import pydap
-from pydap.client import open_url
-from pydap.cas.urs import setup_session
+try:
+    # put import of packages that are not installed
+    import pydap
+    from pydap.client import open_url
+    from pydap.cas.urs import setup_session
+except ImportError:
+    pass
+
 import xarray as xr
 import gsw
+import shapely.geometry as shpgeom
 
 
 def import_cmems(variable, url, username, password, lon_min, lon_max, lat_min, lat_max, start_time, end_time):
@@ -20,6 +26,10 @@ def import_cmems(variable, url, username, password, lon_min, lon_max, lat_min, l
        CMEMS data in xarray
     ==============================================================================
     '''
+    try:
+        pydap
+    except NameError:
+        raise ImportError('Please install the pydap package')
     
     lon_slice = slice(lon_min, lon_max)
     lat_slice = slice(lat_min, lat_max)
@@ -52,3 +62,29 @@ def distFromStart(latitude, longitude):
     dist_from_start = np.nancumsum(dist_between_profiles_km)
     
     return dist_from_start
+
+
+def isnullgeometry(geom):
+    """Test for empty geometry, or generally null value
+    
+    Hint: on geodataframes do: gdf.geometry.apply(isnullgeometry)
+    
+    Parameters
+    ----------
+    geom : shapely.geometry or any other Python object
+    
+    Returns
+    -------
+    bool
+        whether is an empty geometry, None or NaN
+    
+    """
+    if isinstance(geom, (shpgeom.base.BaseGeometry, shpgeom.base.BaseMultipartGeometry)):
+        return geom.is_empty
+    else:
+        return isnull(geom)
+    
+def isnull(val):
+    """test for None or NaNs
+    """
+    return val != val or val is None
