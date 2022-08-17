@@ -5,6 +5,12 @@ Project proposed by Sophie Clayton. Repo started by Felipe and Maya
 ## One line description
 ---
 ### Collaborators
+- Sophie Clayton (mentor)
+- Maya Jakes
+- Felipe Vilela da Silva
+- Alessio Arena
+- Mackenzie Blanusa
+- Chaojiao Sun
 
 ---
 ### Background
@@ -12,6 +18,9 @@ Project proposed by Sophie Clayton. Repo started by Felipe and Maya
 ### Goals
 
 ### Datasets
+
+- [Saildrone](https://data.saildrone.com/data/sets/antarctica-circumnavigation-2019), also available on [ERDDAP](https://erddap.ifremer.fr/erddap/info/index.html?page=1&itemsPerPage=1000)
+- [Sea Surface Height](https://resources.marine.copernicus.eu/product-detail/SEALEVEL_GLO_PHY_L4_MY_008_047/INFORMATION)
 
 ### Workflow
 
