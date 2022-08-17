@@ -33,7 +33,7 @@ def get_closer_to_center(arr):
         except IndexError:
             return np.nan
         
-def prepare_saildrone_data(ds, variables, resample_to='5Min', fill_up_to=15, aggregate_method='mean'):
+def prepare_data(ds, variables, resample_to='5Min', fill_up_to=15, aggregate_method='mean'):
     """Preprocess the saildrone data
     
     This function will do:
