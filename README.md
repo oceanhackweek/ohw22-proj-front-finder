@@ -57,4 +57,4 @@ Mackenzie accessed the saildrone CTD (1 min resolution) data and adcp (5 min) re
         - see saildrone_processing.py, and view_data_AA.ipynb
     - Felipe: processed SSH data to calculate gradient and threshold. Also, compared and merged saildrone measurement with SSH in space and time
         - see gradient_peaks.ipynb
-    -Mackenzie: Reviewed progress and started to convert Maya's code to xarray 
+    - Mackenzie: Reviewed progress and started to convert Maya's code to xarray 
