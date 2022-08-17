@@ -3,6 +3,7 @@ from pydap.client import open_url
 from pydap.cas.urs import setup_session
 import xarray as xr
 import gsw
+import numpy as np
 
 
 def import_cmems(variable, url, username, password, lon_min, lon_max, lat_min, lat_max, start_time, end_time):
@@ -48,7 +49,7 @@ def distFromStart(latitude, longitude):
      '''
 
     dist_between_points = np.concatenate((np.array([0]), gsw.distance(longitude, latitude)))
-    dist_between_points_km = dist_between_profiles/1000
-    dist_from_start = np.nancumsum(dist_between_profiles_km)
+    dist_between_points_km = dist_between_points/1000
+    dist_from_start = np.nancumsum(dist_between_points_km)
     
     return dist_from_start
