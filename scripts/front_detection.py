@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def detect_fronts(df, var, criterion, x = 'distance_km', x_bin = 20):
+def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     ''' Detect fronts from 1D data
     ==============================================================================
     INPUT:
