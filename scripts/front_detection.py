@@ -32,7 +32,7 @@ def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     else:
         return False
 
-def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
+def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = True):
     ''' Detect fronts from 1D data
     ==============================================================================
     INPUT:
@@ -60,8 +60,11 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     
     # apply minimum observations function
     # returns nan is there are < 10 observations else computes the mean of the group
-    df_group_mean = df_grouped.apply(minimum_obs)
-    
+    if min_obs == True:
+        df_group_mean = df_grouped.apply(minimum_obs)
+    else:
+        df_group_mean = df_grouped.mean()
+
     # calculate gradient of var with distance
     df_group_mean['d_var_dx'] = np.round(df_group_mean['d_var'], 3)/df_group_mean['dx']
     
@@ -71,7 +74,6 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     df_group_mean['level'] = pd.cut(df_group_mean['d_var_dx'], criterion, labels = False)
     
     return df_group_mean
-
 
 def minimum_obs(group):
     ''' Check for groups with less than 10 observations.
