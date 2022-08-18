@@ -1,6 +1,48 @@
 import pandas as pd
 import numpy as np
 
+def front_finder(altimeter, lon_sdrn, lat_sdrn, time_sdrn,
+                 saild, var, criterion, 
+                 threshold = 2*1e-6, x_bin = 500, min_obs = None, method = 'jet_front'):
+    ''' Identifying fronts using altimeter and in situ observations. 
+    First, the algorithm tracks the in situ measurements located within peaks in gradients of 
+    altimeter observations (e.g., SSH). It gives the initial condition for the position of mesoscale
+    fronts. Then, it computes level of strength in the gradients of the chosen value from the in situ 
+    observation.    
+    ================================================================================================
+    INPUT:
+       altimeter = adt, sla, etc [time, n, m]
+       lon_sdrn  = longitude array of the in sity obs [n]
+       lat_sdrn  = latitude array of the in sity obs [m]
+       time_sdrn = time array of the in sity obs [t]
+       saild     = the data of the in in situ observations. 
+                   It must contain a column named 'distance_km' with 
+                   the distance between each sampling
+       var       = variable name (string), to compute the gradient (e.g. Temperature, Salinity, 
+                   Chlorophyll, Density)
+       criterion = gradient criterion to group fronts into different levels (list of 5 values)
+       method    = 'jet_front' uses both the defition to identify jets and fronts
+                   'front_grad' identifies frontal filaments.  
+    OUTPUT:
+       The in situ dataset with the variables at the position of the identified fronts
+    ================================================================================================
+    Writers: Alessio Arena, Felipe Vilela da Silva, Mackenzie Blanusa, Maya Jakes and Sophie Clayton
+    '''    
+    if method == 'jet_front':
+        # When does the position of the in situ observation coincide with the peaks in SSH gradient 
+        # from the altimeter?
+        boolean_pos = np.ravel([np.array(match_obs_alt(altimeter.sel(time=str(time_sdrn[t]), method = 'nearest'), 
+                                                     lon_sdrn[t], lat_sdrn[t]))
+                                for t in range(len(saild))])
+
+        # What is the strength the SST from the in situ observation at these locations?
+        saild_gradSSH = saild.loc[boolean_pos].copy()
+        front_level = detect_grad_1d(saild_gradSSH, var, criterion, x_bin = x_bin, min_obs = min_obs)
+        return front_level
+    elif method == 'front_grad':
+        front_level = detect_grad_1d(saild, var, criterion, x_bin = x_bin, min_obs = min_obs)
+        return front_level
+
 def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     ''' Match the position of the peaks in SSH grad with the position of the in situ observation
     Writers: Felipe Vilela da Silva and Alessio Arena
@@ -10,7 +52,7 @@ def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     OUTPUTS:
     '''
     
-    if ~np.isnan(lat_sdrn.data.item()):
+    if ~np.isnan(lat_sdrn):
         ## Next, I extract the altimeter information nearby the in situ observation
         alt_at_obs = altimeter.sel(latitude = slice(lat_sdrn-1, lat_sdrn+1), 
                                    longitude = slice(lon_sdrn-1,lon_sdrn+1))
