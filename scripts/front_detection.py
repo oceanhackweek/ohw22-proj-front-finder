@@ -205,8 +205,10 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 
     df_grouped = df_new.groupby(df_new[x] // x_bin)
     
     # Deal with groups that cross the international date line using average_lat_lon function.
-    df_grouped = df_grouped.apply(average_lat_lon)
-    df_grouped = df_grouped.groupby(df_grouped[x] // x_bin)
+    df_new = df_grouped.apply(average_lat_lon)
+    
+    # Needs to be grouped again because average_lat_lon returns the pandas df with average lat and lon values 
+    df_grouped = df_new.groupby(df_new[x] // x_bin)
     
     # apply minimum observations function
     if min_obs != None:
@@ -226,7 +228,8 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 
     return df_group_mean
 
 def minimum_obs(group, min_obs = 10):
-    ''' Check for groups with less than a certain number of observations (min_obs).
+    ''' Check for groups with less than a certain number of observations (min_obs). 
+    Return nan if True. Default = 10 observations.
     '''
     if len(group) < min_obs:
         return np.nan
@@ -234,6 +237,19 @@ def minimum_obs(group, min_obs = 10):
         return group.mean()
 
 def average_lat_lon(group):
+    '''Average latitude and longitude values in a groupby object. 
+    Writers: Maya Jakes
+    ==============================================================================
+    INPUT:
+    Pandas grouby object that contains a column named 'latitude' and a column named 'longitude'.
+    Lat and lon are converted into Cartesian coordinates (x,y,z), then mean is computed for x, y and z.
+    Then the Cartesian coordinate mean values are converted back to Lat and Lon in degrees.
+    
+    OUTPUT:
+    Returns a pandas dataframe that is the same as the input dataframe before grouping, but the latitude and longitude columns
+    now display the average lat and lon in each group.
+    
+    '''
     lat = group.latitude
     lon = group.longitude
     
