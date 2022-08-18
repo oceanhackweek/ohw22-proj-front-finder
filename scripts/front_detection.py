@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import xarray as xr
 
 def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     ''' Match the position of the peaks in SSH grad with the position of the in situ observation
@@ -32,6 +33,108 @@ def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     else:
         return False
 
+
+def calculate_2d_gradient(var, threshold = 2*1e-6, to_dataframe=True):
+    """Calculates the 2D gradient of the variable, optionally thresholding it and converting to a dataframe
+    
+    Parameters
+    ----------
+    var : xr.DataArray
+        variable to process
+    threshold : float, optional
+        minimum value to keep
+    to_dataframe : bool, optional
+        whether you want a masked xr.DataArray, or a pd.Dataframe of only values above threshold
+    
+    Returns
+    -------
+    xr.DataArray or pd.DataFrame
+        thresholded gradient values
+    
+    """
+    if not isinstance(var, xr.DataArray):
+        raise TypeError("please provide a DataArray. This may be done by selecting the variable of interest")
+    deg_to_m = 111195.
+    var_x = var.differentiate('longitude')/deg_to_m
+    var_y = var.differentiate('latitude')/deg_to_m
+    ## Below, I compute the module of the gradient 
+    gradient = np.sqrt(var_x**2 + var_y**2)
+    grad_thld   = gradient.where(gradient > threshold)
+    if not to_dataframe:
+        return grad_thld
+    
+    else:
+        grad_thld_df = grad_thld.to_dataframe().dropna()
+        grad_thld_df = grad_thld_df.reset_index(level=[1,2], drop=False)
+        return grad_thld_df
+
+def match_saildrone_to_seasurface_data(df_saildrone, df_var, lat_res=0.25, lon_res=0.25, keep_only_matched=True):
+    """Finds the nearest seasurface data to each drone observation in space and time
+    
+    Parameters
+    ----------
+    df_saildrone : pd.DataFrame
+        saildrone data having a time index and 'latitude' and 'longitude' columns
+    df_var : pd.DataFrame
+        sea surface data having time index and 'latitude', 'longitude' and a measurement column
+    lat_res : float, optional
+        resolution in degrees
+    lon_res : float, optional
+        resolution in degrees
+    keep_only_matched: bool, optional
+        whether to remove saildrone data that did not align with any seasurface data
+    
+    Returns
+    -------
+    xr.DataArray or pd.DataFrame
+        thresholded gradient values
+    
+    """
+    # TODO this assumes that df_var has one data layer per day
+    # it should be generalised at later stages
+    df_saildrone['date'] = df_saildrone.index.date
+    
+    df_saildrone.apply(lambda row: _is_saildrone_within_front(row, df_var, lat_res, lon_res), axis=1)
+    if keep_only_matched:
+        return df_saildrone.dropna(subset='gradient_value')
+    
+
+def _is_saildrone_within_front(row, gradient, lat_res=0.25, lon_res=0.25):
+    # select appropriate date in gradient
+    # we do the datetime matching once as that is time consuming
+    row['gradient_value'] = np.nan
+    row['gradient_lat'] = np.nan
+    row['gradient_lon'] = np.nan
+    
+    try:
+        selected = gradient.loc[pd.Timestamp(row.date)]
+    except KeyError:
+        return row
+    
+    # simple nearest neighbour approach with minimum distance condition
+    # if the nearest neighbour is further than the data resolution, we don't have a match
+    selected = selected.set_index('latitude', drop=True)
+    lats = selected.index.values
+    dlat = np.abs(lats - row.latitude)
+    if dlat.min() < lat_res:
+        selected = selected.loc[lats[dlat.argmin()]]
+        # lat_selected = lats[dlat.argmin()]
+        
+        # selected = selected.set_index('longitude', drop=True)
+        lons = selected.index.values
+        dlon = np.abs(lons - row.longitude)
+        if dlon.min() < lon_res:
+            # lon_selected = lons[dlon.argmin()]
+            out = selected.iloc[dlon.argmin()].drop('longitude')
+            row['gradient_value'] = out.item()
+            row['gradient_lat'] = lats[dlat.argmin()]
+            row['gradient_lon'] = lons[dlon.argmin()]
+            return row
+        else:
+            return row
+    else:
+        return row    
+    
 def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     ''' Detect fronts from 1D data
     ==============================================================================
