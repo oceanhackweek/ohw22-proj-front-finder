@@ -101,10 +101,15 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 
     # group into segments with size accoridng to x_bin
     df_grouped = df_new.groupby(df_new[x] // x_bin)
     
+    # Deal with groups that cross the international date line using average_lat_lon function.
+    df_grouped = df_grouped.apply(average_lat_lon)
+    df_grouped = df_grouped.groupby(df_grouped[x] // x_bin)
+    
     # apply minimum observations function
     if min_obs != None:
         df_group_mean = df_grouped.apply(minimum_obs, min_obs = min_obs)
     else:
+        # don't apply to lat lon
         df_group_mean = df_grouped.mean()
 
     # calculate gradient of var with distance
@@ -124,5 +129,26 @@ def minimum_obs(group, min_obs = 10):
         return np.nan
     else:
         return group.mean()
+
+def average_lat_lon(group):
+    lat = group.latitude
+    lon = group.longitude
+    
+    x = np.cos(np.deg2rad(lat)) * np.cos(np.deg2rad(lon));
+    y = np.cos(np.deg2rad(lat)) * np.sin(np.deg2rad(lon));
+    z = np.sin(np.deg2rad(lat))
+    
+    mean_x, mean_y, mean_z = np.nanmean(x), np.nanmean(y), np.nanmean(z)
+    
+    group['longitude'] = np.rad2deg(np.arctan2(mean_y, mean_x))
+    hyp = np.sqrt(mean_x * mean_x + mean_y * mean_y)
+    group['latitude'] = np.rad2deg(np.arctan2(mean_z, hyp))
+    
+    return group
+    
+    
+    
+    
+    
     
     
