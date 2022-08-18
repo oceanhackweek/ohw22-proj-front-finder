@@ -2,6 +2,48 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 
+def front_finder(altimeter, lon_sdrn, lat_sdrn, time_sdrn,
+                 saild, var, criterion, 
+                 threshold = 2*1e-6, x_bin = 500, min_obs = None, method = 'jet_front'):
+    ''' Identifying fronts using altimeter and in situ observations. 
+    First, the algorithm tracks the in situ measurements located within peaks in gradients of 
+    altimeter observations (e.g., SSH). It gives the initial condition for the position of mesoscale
+    fronts. Then, it computes level of strength in the gradients of the chosen value from the in situ 
+    observation.    
+    ================================================================================================
+    INPUT:
+       altimeter = adt, sla, etc [time, n, m]
+       lon_sdrn  = longitude array of the in sity obs [n]
+       lat_sdrn  = latitude array of the in sity obs [m]
+       time_sdrn = time array of the in sity obs [t]
+       saild     = the data of the in in situ observations. 
+                   It must contain a column named 'distance_km' with 
+                   the distance between each sampling
+       var       = variable name (string), to compute the gradient (e.g. Temperature, Salinity, 
+                   Chlorophyll, Density)
+       criterion = gradient criterion to group fronts into different levels (list of 5 values)
+       method    = 'jet_front' uses both the defition to identify jets and fronts
+                   'front_grad' identifies frontal filaments.  
+    OUTPUT:
+       The in situ dataset with the variables at the position of the identified fronts
+    ================================================================================================
+    Writers: Alessio Arena, Felipe Vilela da Silva, Mackenzie Blanusa, Maya Jakes and Sophie Clayton
+    '''    
+    if method == 'jet_front':
+        # When does the position of the in situ observation coincide with the peaks in SSH gradient 
+        # from the altimeter?
+        boolean_pos = np.ravel([np.array(match_obs_alt(altimeter.sel(time=str(time_sdrn[t]), method = 'nearest'), 
+                                                     lon_sdrn[t], lat_sdrn[t]))
+                                for t in range(len(saild))])
+
+        # What is the strength the SST from the in situ observation at these locations?
+        saild_gradSSH = saild.loc[boolean_pos].copy()
+        front_level = detect_grad_1d(saild_gradSSH, var, criterion, x_bin = x_bin, min_obs = min_obs)
+        return front_level
+    elif method == 'front_grad':
+        front_level = detect_grad_1d(saild, var, criterion, x_bin = x_bin, min_obs = min_obs)
+        return front_level
+
 def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     ''' Match the position of the peaks in SSH grad with the position of the in situ observation
     Writers: Felipe Vilela da Silva and Alessio Arena
@@ -11,7 +53,7 @@ def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     OUTPUTS:
     '''
     
-    if ~np.isnan(lat_sdrn.data.item()):
+    if ~np.isnan(lat_sdrn):
         ## Next, I extract the altimeter information nearby the in situ observation
         alt_at_obs = altimeter.sel(latitude = slice(lat_sdrn-1, lat_sdrn+1), 
                                    longitude = slice(lon_sdrn-1,lon_sdrn+1))
@@ -135,8 +177,9 @@ def _is_saildrone_within_front(row, gradient, lat_res=0.25, lon_res=0.25):
     else:
         return row    
     
-def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
+def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 10):
     ''' Detect fronts from 1D data
+    Writers: Maya Jakes and Alessio Arena
     ==============================================================================
     INPUT:
     df = pandas dataframe
@@ -146,25 +189,32 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     Optional inputs:
     x = name of x variable to compute the gradient along. Default = 'distance_km'
     x_bin = size of the bins to average over. Default = 20 (km)
+    min_obs = minimum number of observations in each bin. Dedault = 10.
     
     OUTPUT:
     New dataframe containing binned averages of var, latitude, longitude, x, dx, d_var and d_var_dx.
     Given the criterion input, each binned group is assigned a level using d_var_dx to characterise the fronts.
     
     '''
-    
     df['dx'] = np.abs(np.gradient(df[x]))
     df['d_var'] = np.abs(np.gradient(df[var]))
     
     df_new = df[[var, 'latitude', 'longitude', x, 'dx', 'd_var']]
     
-    # group into 20 km segments
+    # group into segments with size accoridng to x_bin
     df_grouped = df_new.groupby(df_new[x] // x_bin)
     
-    # apply minimum observations function
-    # returns nan is there are < 10 observations else computes the mean of the group
-    df_group_mean = df_grouped.apply(minimum_obs)
+    # Deal with groups that cross the international date line using average_lat_lon function.
+    df_grouped = df_grouped.apply(average_lat_lon)
+    df_grouped = df_grouped.groupby(df_grouped[x] // x_bin)
     
+    # apply minimum observations function
+    if min_obs != None:
+        df_group_mean = df_grouped.apply(minimum_obs, min_obs = min_obs)
+    else:
+        # don't apply to lat lon
+        df_group_mean = df_grouped.mean()
+
     # calculate gradient of var with distance
     df_group_mean['d_var_dx'] = np.round(df_group_mean['d_var'], 3)/df_group_mean['dx']
     
@@ -175,13 +225,33 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     
     return df_group_mean
 
-
-def minimum_obs(group):
-    ''' Check for groups with less than 10 observations.
+def minimum_obs(group, min_obs = 10):
+    ''' Check for groups with less than a certain number of observations (min_obs).
     '''
-    if len(group) < 10:
+    if len(group) < min_obs:
         return np.nan
     else:
         return group.mean()
+
+def average_lat_lon(group):
+    lat = group.latitude
+    lon = group.longitude
+    
+    x = np.cos(np.deg2rad(lat)) * np.cos(np.deg2rad(lon));
+    y = np.cos(np.deg2rad(lat)) * np.sin(np.deg2rad(lon));
+    z = np.sin(np.deg2rad(lat))
+    
+    mean_x, mean_y, mean_z = np.nanmean(x), np.nanmean(y), np.nanmean(z)
+    
+    group['longitude'] = np.rad2deg(np.arctan2(mean_y, mean_x))
+    hyp = np.sqrt(mean_x * mean_x + mean_y * mean_y)
+    group['latitude'] = np.rad2deg(np.arctan2(mean_z, hyp))
+    
+    return group
+    
+    
+    
+    
+    
     
     

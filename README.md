@@ -4,10 +4,10 @@ Project proposed by Sophie Clayton. Repo started by Felipe and Maya
 ---
 ## One line description
 ---
-### Collaborators
+### Collaborators and roles
 - Sophie Clayton (mentor)
 - Maya Jakes
-- Felipe Vilela da Silva
+- Felipe Vilela da Silva (conceptualist and coder for the approach of exploring the in situ observations at the position of peaks in the SSH gradient available from altimeters)
 - Alessio Arena
 - Mackenzie Blanusa
 - Chaojiao Sun
@@ -46,10 +46,9 @@ Ocean fronts play a key role in ocean dynamics and biogeochemical processes. The
 ### References
 
 ### Progress notes:
-- Day 1
-As an initial exercise, Maya and Felipe explored some Saildrone data (hydrography) and SSH from altimeters in the Southern Ocean between the beginning of 2019 and Sep 2019. We got stuck trying to figure out how to upload CMENS data with xr.open_dataset(). We are trying to add the user info (username and password) into the code.
-
-Mackenzie accessed the saildrone CTD (1 min resolution) data and adcp (5 min) resolution data. She began preprocessing the data which includes removing Nans and  resampling the saildrone 1 min data to 5 min.
+- Day 3
+    - Felipe: combined the two versions of the frontal detection algorithms based on (i) peaks in the SSH gradient and 
+    (ii) high gradients in surface data provided by in situ observations. Also, I started a notebook of a suggestion for the OHW presentation. 
 
 - Day 2
     - Maya: reviewed and improved Sophie's code to calculate and classify gradients on time series (1D data)
@@ -58,3 +57,8 @@ Mackenzie accessed the saildrone CTD (1 min resolution) data and adcp (5 min) re
     - Felipe: processed SSH data to calculate gradient and threshold. Also, compared and merged saildrone measurement with SSH in space and time
         - see gradient_peaks.ipynb
     - Mackenzie: Reviewed progress and started to convert Maya's code to xarray 
+
+- Day 1
+As an initial exercise, Maya and Felipe explored some Saildrone data (hydrography) and SSH from altimeters in the Southern Ocean between the beginning of 2019 and Sep 2019. We got stuck trying to figure out how to upload CMENS data with xr.open_dataset(). We are trying to add the user info (username and password) into the code.
+
+Mackenzie accessed the saildrone CTD (1 min resolution) data and adcp (5 min) resolution data. She began preprocessing the data which includes removing Nans and  resampling the saildrone 1 min data to 5 min.
