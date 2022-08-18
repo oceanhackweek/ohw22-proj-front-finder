@@ -90,3 +90,76 @@ def isnull(val):
     """test for None or NaNs
     """
     return val != val or val is None
+
+
+
+def rotate_vels(u, v, lons, lats):
+    ''' Rotate velocities from eastward (u) and northward (v) to along-stream (u_rot) and cross-stream (v_rot), respectively.
+     Writers: Maya Jakes
+     ==============================================================================
+     INPUT:
+     u = eastward velocity component (could be 1D or 2D)
+     v = northward velocity component (could be 1D or 2D)
+     lons = 1D array of longitude values
+     lats = 1D array of latitude values
+     
+     OUTPUT:
+     Rotated velocities with one less observation in x than the input velocities (no forward azimuth from the last lat lon position)
+     u_rot = along-stream velocity
+     v_rot = cross-stream velocity 
+     ==============================================================================
+    '''
+    # remove the last velocity observation (no forward azimuth from the last lat lon position)
+    speed = np.sqrt(u**2 + v**2)[:-1]
+    velocity_bearing = uv_bearing(u, v)[:-1]
+
+    along_strm_brng = stream_bearing(lons, lats)
+    # make 1D array into 2D in the same shape as velocity bearings
+    along_strm_brng = np.tile(along_strm_brng,(len(u[0]), 1)).transpose()
+
+    # find the angle between the velocity bearing and the along stream direction
+    theta = along_strm_brng - velocity_bearing
+
+    # calculate u and v using this new angle (converting degrees to radians)
+    u_rot = np.cos(theta*np.pi/180)*speed
+    v_rot = np.sin(theta*np.pi/180)*speed
+    
+    return u_rot, v_rot
+
+
+def uv_bearing(u, v):
+    '''Calculates the bearing (clockwise from True North) using eastward (u) and northward (v) components of velocity'''
+    theta = np.rad2deg(np.arctan2(u, v))
+    theta += 360
+    theta = theta % 360
+    return theta
+
+
+def stream_bearing(lons, lats):
+    ''' Calculates the bearing (clockwise from True North) between each lat and lon position.
+    Writers: Maya Jakes
+    ==============================================================================
+    INPUTS:
+    lons = 1D array of longitude values
+    lats = 1D array of latitude values
+    
+    OUTPUT:
+    1D array of bearings (in degrees)
+    '''
+    bearing = []
+    for i in range(0, len(lats)-1):
+        lat1, lat2 = lats[i], lats[i+1]
+        lon1, lon2 = lons[i], lons[i+1]
+        
+        # WGS84 is the reference coordinate system (Earth's centre of mass) used by GPS.
+        geodesic = pyproj.Geod(ellps='WGS84')  
+        # Inverse computation to calculate the forward azimuths from two lat and lon coordinates. 
+        fwd_azimuth = geodesic.inv(lon1, lat1, lon2, lat2)[0]
+
+        # if the angle is negative (anticlockwise from N), add it to 360 to get the bearing clockwise from N.
+        if fwd_azimuth < 0:
+            fwd_azimuth = 360 + fwd_azimuth
+            
+        bearing.append(fwd_azimuth)
+        
+    return np.asarray(bearing)
