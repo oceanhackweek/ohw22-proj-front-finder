@@ -4,10 +4,10 @@ Project proposed by Sophie Clayton. Repo started by Felipe and Maya
 ---
 ## One line description
 ---
-### Collaborators
+### Collaborators and roles
 - Sophie Clayton (mentor)
 - Maya Jakes
-- Felipe Vilela da Silva
+- Felipe Vilela da Silva (conceptualist and coder for the approach of exploring the in situ observations at the position of peaks in the SSH gradient available from altimeters)
 - Alessio Arena
 - Mackenzie Blanusa
 - Chaojiao Sun
