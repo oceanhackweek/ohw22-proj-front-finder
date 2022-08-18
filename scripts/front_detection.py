@@ -32,8 +32,9 @@ def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
     else:
         return False
 
-def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = True):
+def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 10):
     ''' Detect fronts from 1D data
+    Writers: Maya Jakes and Alessio Arena
     ==============================================================================
     INPUT:
     df = pandas dataframe
@@ -43,25 +44,24 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 
     Optional inputs:
     x = name of x variable to compute the gradient along. Default = 'distance_km'
     x_bin = size of the bins to average over. Default = 20 (km)
+    min_obs = minimum number of observations in each bin. Dedault = 10.
     
     OUTPUT:
     New dataframe containing binned averages of var, latitude, longitude, x, dx, d_var and d_var_dx.
     Given the criterion input, each binned group is assigned a level using d_var_dx to characterise the fronts.
     
     '''
-    
     df['dx'] = np.abs(np.gradient(df[x]))
     df['d_var'] = np.abs(np.gradient(df[var]))
     
     df_new = df[[var, 'latitude', 'longitude', x, 'dx', 'd_var']]
     
-    # group into 20 km segments
+    # group into segments with size accoridng to x_bin
     df_grouped = df_new.groupby(df_new[x] // x_bin)
     
     # apply minimum observations function
-    # returns nan is there are < 10 observations else computes the mean of the group
-    if min_obs == True:
-        df_group_mean = df_grouped.apply(minimum_obs)
+    if min_obs != None:
+        df_group_mean = df_grouped.apply(minimum_obs, min_obs = min_obs)
     else:
         df_group_mean = df_grouped.mean()
 
@@ -75,10 +75,10 @@ def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20, min_obs = 
     
     return df_group_mean
 
-def minimum_obs(group):
-    ''' Check for groups with less than 10 observations.
+def minimum_obs(group, min_obs = 10):
+    ''' Check for groups with less than a certain number of observations (min_obs).
     '''
-    if len(group) < 10:
+    if len(group) < min_obs:
         return np.nan
     else:
         return group.mean()
