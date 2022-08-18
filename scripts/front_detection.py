@@ -1,7 +1,38 @@
 import pandas as pd
 import numpy as np
 
-def detect_fronts(df, var, criterion, x = 'distance_km', x_bin = 20):
+def match_obs_alt(altimeter, lon_sdrn, lat_sdrn, threshold = 2*1e-6):
+    ''' Match the position of the peaks in SSH grad with the position of the in situ observation
+    Writers: Felipe Vilela da Silva and Alessio Arena
+    ==============================================================================
+    INPUTS:
+    
+    OUTPUTS:
+    '''
+    
+    if ~np.isnan(lat_sdrn.data.item()):
+        ## Next, I extract the altimeter information nearby the in situ observation
+        alt_at_obs = altimeter.sel(latitude = slice(lat_sdrn-1, lat_sdrn+1), 
+                                   longitude = slice(lon_sdrn-1,lon_sdrn+1))
+
+        # TODO: if interested, find a more accurate way to convert deg to m
+        # we have first followed the latitudinal and longitudinal distances but it only worked
+        # if we turned the xarray into a np.array. We preferred to keep it as a xarray atm.
+        deg_to_m = 111195.
+        var_x = alt_at_obs.differentiate('longitude')/deg_to_m
+        var_y = alt_at_obs.differentiate('latitude')/deg_to_m
+        ## Below, I compute the module of the gradient 
+        gradient = np.sqrt(var_x**2 + var_y**2)
+
+        grad_thld   = gradient.where(gradient > threshold)
+        grad_at_obs = grad_thld.sel(latitude=lat_sdrn.data, longitude=lon_sdrn.data, 
+                                    method = 'nearest').data.item()
+    
+        return ~np.isnan(grad_at_obs)
+    else:
+        return False
+
+def detect_grad_1d(df, var, criterion, x = 'distance_km', x_bin = 20):
     ''' Detect fronts from 1D data
     ==============================================================================
     INPUT:
